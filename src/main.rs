@@ -1,6 +1,9 @@
 use actix_web::{get, middleware::Logger, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use serde_json::json;
 
+mod models;
+mod schema;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   if std::env::var_os("RUST_LOG").is_none() {
