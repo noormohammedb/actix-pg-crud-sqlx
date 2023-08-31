@@ -48,6 +48,7 @@ async fn main() -> std::io::Result<()> {
       .service(health_checker_handler)
       .service(handler::note_list_handler)
       .service(handler::create_note_handler)
+      .service(handler::get_note_handler)
       .wrap(Logger::default())
   })
   .bind("0.0.0.0:8080")?

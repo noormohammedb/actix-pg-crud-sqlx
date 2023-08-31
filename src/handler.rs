@@ -1,5 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
   models::NoteModel,
@@ -85,6 +86,38 @@ pub async fn create_note_handler(
           "message": format!("{:?}", e)
       }));
       //
+    }
+  }
+}
+
+#[get("/notes/{id}")]
+pub async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>) -> impl Responder {
+  dbg!(&state, &data);
+  let note_id = data.into_inner();
+
+  let query_result = sqlx::query_as!(NoteModel, "SELECT * FROM notes WHERE ID = $1", note_id)
+    .fetch_one(&state.db)
+    .await;
+
+  match query_result {
+    Ok(note) => {
+      let res_data = json!({
+        "status": "success",
+        "data": json!({
+          "note": json!({"data": note})
+        })
+      });
+
+      return HttpResponse::Ok().json(res_data);
+    }
+    Err(e) => {
+      dbg!(&e);
+      let message = format!("Note with ID: {} not found", note_id);
+      return HttpResponse::NotFound().json(json!({
+        "status": "fail",
+        "message": message,
+        "data": json!({ })
+      }));
     }
   }
 }
