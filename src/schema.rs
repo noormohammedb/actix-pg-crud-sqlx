@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+// use sqlx::FromRow;
 
 #[derive(Debug, Deserialize)]
 pub struct FilterOptions {
