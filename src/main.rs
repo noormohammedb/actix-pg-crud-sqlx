@@ -50,6 +50,7 @@ async fn main() -> std::io::Result<()> {
       .service(handler::create_note_handler)
       .service(handler::get_note_handler)
       .service(handler::edit_note_handler)
+      .service(handler::delete_note_handler)
       .wrap(Logger::default())
   })
   .bind("0.0.0.0:8080")?
@@ -61,7 +62,6 @@ async fn main() -> std::io::Result<()> {
 async fn health_checker_handler(_req: HttpRequest) -> impl Responder {
   const MESSAGE: &str = "foo bar koo";
   let json_data = json!({"status": "success", "message": MESSAGE});
-  // let json_data = json!({"foo": "bar"});
   dbg!(&json_data);
   HttpResponse::Ok().json(json_data)
 }

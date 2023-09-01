@@ -1,4 +1,4 @@
-use actix_web::{get, patch, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
@@ -169,6 +169,39 @@ pub async fn edit_note_handler(
       return HttpResponse::BadRequest().json(json!({
         "status": "fail",
         "message": format!("Error: {:?}", err)
+      }));
+    }
+  }
+}
+
+#[delete("/notes/{id}")]
+pub async fn delete_note_handler(
+  state: web::Data<AppState>,
+  path: web::Path<Uuid>,
+) -> impl Responder {
+  dbg!(&state, &path);
+
+  let note_id = path.into_inner();
+  let query_result = sqlx::query!("DELETE FROM notes WHERE ID = $1", note_id,)
+    .execute(&state.db)
+    .await;
+
+  match query_result {
+    Ok(data) => {
+      if data.rows_affected() > 0 {
+        return HttpResponse::Ok().json(json!({
+          "message": "deleted",
+          "data": json!({ "rows-affected" : data.rows_affected() })
+        }));
+      }
+      return HttpResponse::NoContent().finish();
+    }
+    Err(e) => {
+      dbg!(&e);
+      let message = format!("Error: {:?}", e);
+      return HttpResponse::InternalServerError().json(json!({
+        "status": "fail",
+        "message": message,
       }));
     }
   }
