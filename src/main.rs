@@ -42,15 +42,9 @@ async fn main() -> std::io::Result<()> {
 
   HttpServer::new(move || {
     App::new()
-      .app_data(
-        web::Data::new(AppState { db: pool.clone() }), /* connect db and pass the connection */
-      )
+      .app_data(web::Data::new(AppState { db: pool.clone() }))
       .service(health_checker_handler)
-      .service(handler::note_list_handler)
-      .service(handler::create_note_handler)
-      .service(handler::get_note_handler)
-      .service(handler::edit_note_handler)
-      .service(handler::delete_note_handler)
+      .configure(handler::handler_service_config)
       .wrap(Logger::default())
   })
   .bind("0.0.0.0:8080")?

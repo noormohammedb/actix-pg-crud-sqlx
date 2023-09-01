@@ -9,8 +9,18 @@ use crate::{
   AppState,
 };
 
+pub fn handler_service_config(config: &mut web::ServiceConfig) {
+  config.service(
+    web::scope("/api")
+      .service(note_list_handler)
+      .service(create_note_handler)
+      .service(get_note_handler)
+      .service(delete_note_handler),
+  );
+}
+
 #[get("/notes")]
-pub async fn note_list_handler(
+async fn note_list_handler(
   opts: web::Query<FilterOptions>,
   state: web::Data<AppState>,
 ) -> impl Responder {
@@ -42,7 +52,7 @@ pub async fn note_list_handler(
 }
 
 #[post("/notes")]
-pub async fn create_note_handler(
+async fn create_note_handler(
   body: web::Json<CreateNoteSchema>,
   state: web::Data<AppState>,
 ) -> impl Responder {
@@ -92,7 +102,7 @@ pub async fn create_note_handler(
 }
 
 #[get("/notes/{id}")]
-pub async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>) -> impl Responder {
+async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>) -> impl Responder {
   dbg!(&state, &data);
   let note_id = data.into_inner();
 
@@ -124,7 +134,7 @@ pub async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>)
 }
 
 #[patch("/notes/{id}")]
-pub async fn edit_note_handler(
+async fn edit_note_handler(
   state: web::Data<AppState>,
   path: web::Path<Uuid>,
   body: web::Json<UpdatedNoteSchema>,
@@ -175,10 +185,7 @@ pub async fn edit_note_handler(
 }
 
 #[delete("/notes/{id}")]
-pub async fn delete_note_handler(
-  state: web::Data<AppState>,
-  path: web::Path<Uuid>,
-) -> impl Responder {
+async fn delete_note_handler(state: web::Data<AppState>, path: web::Path<Uuid>) -> impl Responder {
   dbg!(&state, &path);
 
   let note_id = path.into_inner();
