@@ -1,10 +1,11 @@
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, patch, post, web, HttpResponse, Responder};
+use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
   models::NoteModel,
-  schema::{CreateNoteSchema, FilterOptions},
+  schema::{CreateNoteSchema, FilterOptions, UpdatedNoteSchema},
   AppState,
 };
 
@@ -95,7 +96,7 @@ pub async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>)
   dbg!(&state, &data);
   let note_id = data.into_inner();
 
-  let query_result = sqlx::query_as!(NoteModel, "SELECT * FROM notes WHERE ID = $1", note_id)
+  let query_result = sqlx::query_as!(NoteModel, "SELECT * FROM notes WHERE id = $1", note_id)
     .fetch_one(&state.db)
     .await;
 
@@ -117,6 +118,57 @@ pub async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>)
         "status": "fail",
         "message": message,
         "data": json!({ })
+      }));
+    }
+  }
+}
+
+#[patch("/notes/{id}")]
+pub async fn edit_note_handler(
+  state: web::Data<AppState>,
+  path: web::Path<Uuid>,
+  body: web::Json<UpdatedNoteSchema>,
+) -> impl Responder {
+  let note_id = path.into_inner();
+
+  let query_result = sqlx::query_as!(NoteModel, "SELECT * FROM notes WHERE ID = $1", note_id)
+    .fetch_one(&state.db)
+    .await;
+
+  if query_result.is_err() {
+    dbg!(&query_result.err());
+    let message = format!("Note with ID: {} not found", note_id);
+    return HttpResponse::NotFound().json(json!({"status": "Fail", "message": message,}));
+  }
+
+  let now = Utc::now();
+  let note = query_result.unwrap();
+
+  let query_result = sqlx::query_as!(
+    NoteModel,
+    "UPDATE notes set title = $1, content = $2, category = $3, published = $4, updated_at = $5 where id = $6 RETURNING *",
+    body.title.to_owned().unwrap_or(note.title),
+    body.content.to_owned().unwrap_or(note.content),
+    body.category.to_owned().unwrap_or(note.category.unwrap()),
+    body.published.to_owned().unwrap_or(note.published.unwrap()),
+    now,
+    note_id
+  ).fetch_one(&state.db).await;
+
+  match query_result {
+    Ok(data) => {
+      return HttpResponse::Ok().json(json!({
+        "status": "success",
+        "data": json!({
+          "note": data
+        })
+      }));
+    }
+    Err(err) => {
+      dbg!(&err);
+      return HttpResponse::BadRequest().json(json!({
+        "status": "fail",
+        "message": format!("Error: {:?}", err)
       }));
     }
   }
