@@ -15,6 +15,7 @@ pub fn handler_service_config(config: &mut web::ServiceConfig) {
       .service(note_list_handler)
       .service(create_note_handler)
       .service(get_note_handler)
+      .service(edit_note_handler)
       .service(delete_note_handler),
   );
 }
@@ -40,7 +41,6 @@ async fn note_list_handler(
     let message = "Something bad happened while fetching all note items";
     return HttpResponse::InternalServerError().json(json!({"status":"error", "message": message}));
   }
-  dbg!(&query_result);
   let notes = query_result.unwrap();
 
   let json_response = json!({
@@ -51,21 +51,19 @@ async fn note_list_handler(
   HttpResponse::Ok().json(json_response)
 }
 
-#[post("/notes")]
+#[post("/notes/")]
 async fn create_note_handler(
   body: web::Json<CreateNoteSchema>,
   state: web::Data<AppState>,
 ) -> impl Responder {
-  dbg!(&body);
-  dbg!(&state);
 
   let query_result = sqlx::query_as!(
     NoteModel,
-    "INSERT INTO notes (title, content, category, published) VALUES($1, $2, $3, $4) RETURNING *",
-    body.title,
-    body.content,
-    body.category,
-    body.published,
+    "INSERT INTO notes (title, content, category) VALUES($1, $2, $3) RETURNING *",
+    body.title.to_string(),
+    body.content.to_string(),
+    body.category.to_owned().unwrap_or("".to_string()),
+    // body.published,
   )
   .fetch_one(&state.db)
   .await;
@@ -103,7 +101,6 @@ async fn create_note_handler(
 
 #[get("/notes/{id}")]
 async fn get_note_handler(state: web::Data<AppState>, data: web::Path<Uuid>) -> impl Responder {
-  dbg!(&state, &data);
   let note_id = data.into_inner();
 
   let query_result = sqlx::query_as!(NoteModel, "SELECT * FROM notes WHERE id = $1", note_id)
@@ -146,7 +143,6 @@ async fn edit_note_handler(
     .await;
 
   if query_result.is_err() {
-    dbg!(&query_result.err());
     let message = format!("Note with ID: {} not found", note_id);
     return HttpResponse::NotFound().json(json!({"status": "Fail", "message": message,}));
   }
@@ -160,7 +156,7 @@ async fn edit_note_handler(
     body.title.to_owned().unwrap_or(note.title),
     body.content.to_owned().unwrap_or(note.content),
     body.category.to_owned().unwrap_or(note.category.unwrap()),
-    body.published.to_owned().unwrap_or(note.published.unwrap()),
+    body.published.unwrap_or(note.published.unwrap()),
     now,
     note_id
   ).fetch_one(&state.db).await;
@@ -186,7 +182,6 @@ async fn edit_note_handler(
 
 #[delete("/notes/{id}")]
 async fn delete_note_handler(state: web::Data<AppState>, path: web::Path<Uuid>) -> impl Responder {
-  dbg!(&state, &path);
 
   let note_id = path.into_inner();
   let query_result = sqlx::query!("DELETE FROM notes WHERE ID = $1", note_id,)

@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use actix_web::{
   get, middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
@@ -21,7 +22,7 @@ async fn main() -> std::io::Result<()> {
   dotenv::dotenv().ok();
   env_logger::init();
 
-  println!("server is starting http://localhost:8080/");
+  println!("server is starting http://localhost:8000/");
 
   let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
   let pool = match PgPoolOptions::new()
@@ -41,13 +42,18 @@ async fn main() -> std::io::Result<()> {
   };
 
   HttpServer::new(move || {
+    let cors = Cors::default()
+      .allow_any_origin()
+      .allow_any_method()
+      .allow_any_header();
     App::new()
       .app_data(web::Data::new(AppState { db: pool.clone() }))
       .service(health_checker_handler)
       .configure(handler::handler_service_config)
+      .wrap(cors)
       .wrap(Logger::default())
   })
-  .bind("0.0.0.0:8080")?
+  .bind("0.0.0.0:8000")?
   .run()
   .await
 }
@@ -56,6 +62,5 @@ async fn main() -> std::io::Result<()> {
 async fn health_checker_handler(_req: HttpRequest) -> impl Responder {
   const MESSAGE: &str = "foo bar koo";
   let json_data = json!({"status": "success", "message": MESSAGE});
-  dbg!(&json_data);
   HttpResponse::Ok().json(json_data)
 }
